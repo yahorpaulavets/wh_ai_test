@@ -175,6 +175,8 @@ async function selectPiece(piece) {
 }
 
 async function loadAttacksForCurrentWeapon() {
+    if (!selectedPiece) return;
+    
     const [movesRes, targetsRes] = await Promise.all([
         fetch(`/api/game/piece/${selectedPiece.id}/moves`),
         fetch(`/api/game/piece/${selectedPiece.id}/targets?weapon_type=${selectedWeaponType}&weapon_index=${selectedWeaponIndex}`)
@@ -245,10 +247,10 @@ async function attackPiece(attackerId, defenderId) {
 }
 
 // ✅ ИСПРАВЛЕНО: Выбор оружия из досье
-async function selectWeapon(weaponType, weaponIndex) {
+function selectWeapon(weaponType, weaponIndex) {
     selectedWeaponType = weaponType;
     selectedWeaponIndex = weaponIndex;
-    await loadAttacksForCurrentWeapon();
+    loadAttacksForCurrentWeapon();
     renderBoard();
     showPieceInfo(selectedPiece);
 }
