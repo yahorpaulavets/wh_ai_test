@@ -239,9 +239,13 @@ class GameService:
     def _get_occupied_cells(self, piece: GamePiece) -> set:
         """Получить все клетки, занимаемые моделью с учётом размера базы"""
         cells = set()
-        half_base = piece.base_size // 2
-        for dr in range(-half_base, half_base + 1):
-            for dc in range(-half_base, half_base + 1):
+        # Для base_size=N модель занимает NxN клеток
+        # Центр модели находится в (piece.row, piece.col)
+        # Для нечётных баз (1, 3, 5): центр в середине
+        # Для чётных баз (2, 4): центр смещён, но占据 N клеток
+        half_base = (piece.base_size - 1) // 2
+        for dr in range(-half_base, half_base + piece.base_size - (2 * half_base)):
+            for dc in range(-half_base, half_base + piece.base_size - (2 * half_base)):
                 cells.add((piece.row + dr, piece.col + dc))
         return cells
 
@@ -267,11 +271,11 @@ class GameService:
 
     def _can_place_piece_at(self, piece: GamePiece, new_row: int, new_col: int) -> bool:
         """Проверить, можно ли разместить модель в новой позиции (без коллизий и за границами)"""
-        half_base = piece.base_size // 2
+        half_base = (piece.base_size - 1) // 2
         
         # Проверяем все клетки базы
-        for dr in range(-half_base, half_base + 1):
-            for dc in range(-half_base, half_base + 1):
+        for dr in range(-half_base, half_base + piece.base_size - (2 * half_base)):
+            for dc in range(-half_base, half_base + piece.base_size - (2 * half_base)):
                 check_row = new_row + dr
                 check_col = new_col + dc
                 
@@ -404,20 +408,20 @@ class GameService:
     def _calculate_distance(self, piece1: GamePiece, piece2: GamePiece) -> int:
         """Расчёт минимального расстояния между моделями с учётом размера базы"""
         # Для моделей с базой > 1, расстояние считается от ближайших краёв баз
-        half_base1 = piece1.base_size // 2
-        half_base2 = piece2.base_size // 2
+        half_base1 = (piece1.base_size - 1) // 2
+        half_base2 = (piece2.base_size - 1) // 2
         
         # Границы базы первой модели
         min_row1 = piece1.row - half_base1
-        max_row1 = piece1.row + half_base1
+        max_row1 = piece1.row + half_base1 + (piece1.base_size - 1 - 2 * half_base1)
         min_col1 = piece1.col - half_base1
-        max_col1 = piece1.col + half_base1
+        max_col1 = piece1.col + half_base1 + (piece1.base_size - 1 - 2 * half_base1)
         
         # Границы базы второй модели
         min_row2 = piece2.row - half_base2
-        max_row2 = piece2.row + half_base2
+        max_row2 = piece2.row + half_base2 + (piece2.base_size - 1 - 2 * half_base2)
         min_col2 = piece2.col - half_base2
-        max_col2 = piece2.col + half_base2
+        max_col2 = piece2.col + half_base2 + (piece2.base_size - 1 - 2 * half_base2)
         
         # Если базы перекрываются или соприкасаются - расстояние 0
         if not (max_row1 < min_row2 or max_row2 < min_row1 or 
