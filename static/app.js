@@ -89,13 +89,13 @@ function renderBoard() {
 
             // Подсветка клеток, занимаемых базами моделей
             gameState.pieces.forEach(p => {
-                const halfBase = Math.floor(p.base_size / 2);
-                const minRow = p.row - halfBase;
-                const maxRow = p.row + halfBase;
-                const minCol = p.col - halfBase;
-                const maxCol = p.col + halfBase;
+                const halfBase = (p.base_size - 1) / 2;
+                const minRow = Math.floor(p.row - halfBase);
+                const maxRow = Math.ceil(p.row + halfBase + p.base_size - 1 - 2 * halfBase - 0.001);
+                const minCol = Math.floor(p.col - halfBase);
+                const maxCol = Math.ceil(p.col + halfBase + p.base_size - 1 - 2 * halfBase - 0.001);
                 
-                if (row >= minRow && row <= maxRow && col >= minCol && col <= maxCol) {
+                if (row >= minRow && row < maxRow && col >= minCol && col < maxCol) {
                     if (p.base_size >= 3) {
                         cell.classList.add('occupied-large');
                     } else if (p.base_size === 2) {
