@@ -168,6 +168,19 @@ header h1 {
     z-index: 1;
 }
 
+/* Размер иконки в зависимости от базы */
+.piece.piece-small {
+    font-size: 14px;
+}
+
+.piece.piece-medium {
+    font-size: 18px;
+}
+
+.piece.piece-large {
+    font-size: 24px;
+}
+
 .piece.chaos {
     color: #8a2be2;
     text-shadow: 0 0 5px #8a2be2;

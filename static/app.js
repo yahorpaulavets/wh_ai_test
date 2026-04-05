@@ -106,7 +106,10 @@ function renderBoard() {
 
             if (piece) {
                 const pieceEl = document.createElement('div');
-                pieceEl.className = `piece ${piece.faction}`;
+                // Добавляем класс размера базы к иконке
+                const baseSizeClass = piece.base_size >= 3 ? 'piece-large' : 
+                                     piece.base_size === 2 ? 'piece-medium' : 'piece-small';
+                pieceEl.className = `piece ${piece.faction} ${baseSizeClass}`;
                 pieceEl.textContent = piece.symbol;
 
                 if (piece.W_max > 0) {
