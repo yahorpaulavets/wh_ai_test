@@ -93,7 +93,8 @@ class GameService:
                     )
                 ],
                 symbol="👿",
-                keywords=["демон", "принц хаоса", "психик"]
+                keywords=["демон", "принц хаоса", "психик"],
+                base_size=3  # Большая база для принца демонов
             ),
             GamePiece(
                 id="chaos_lord",
@@ -134,7 +135,8 @@ class GameService:
                     )
                 ],
                 symbol="💀",
-                keywords=["хаос", "лорд"]
+                keywords=["хаос", "лорд"],
+                base_size=2  # Средняя база для лорда хаоса
             ),
             # 🔵 Игрок 2 - Space Marines
             GamePiece(
@@ -186,7 +188,8 @@ class GameService:
                     )
                 ],
                 symbol="🛡️",
-                keywords=["космодесант", "капитан", "ультрамарины"]
+                keywords=["космодесант", "капитан", "ультрамарины"],
+                base_size=2  # Средняя база для капитана
             ),
             GamePiece(
                 id="sm_librarian",
@@ -227,19 +230,60 @@ class GameService:
                     )
                 ],
                 symbol="🔮",
-                keywords=["космодесант", "психик", "либрариум"]
+                keywords=["космодесант", "психик", "либрариум"],
+                base_size=1  # Малая база для либриариума
             ),
         ]
         self.current_turn = PieceFaction.CHAOS
 
+    def _get_occupied_cells(self, piece: GamePiece) -> set:
+        """Получить все клетки, занимаемые моделью с учётом размера базы"""
+        cells = set()
+        half_base = piece.base_size // 2
+        for dr in range(-half_base, half_base + 1):
+            for dc in range(-half_base, half_base + 1):
+                cells.add((piece.row + dr, piece.col + dc))
+        return cells
+
+    def _is_cell_occupied_by(self, row: int, col: int, exclude_piece_id: str) -> bool:
+        """Проверить, занята ли клетка другой моделью (исключая указанную)"""
+        for piece in self.pieces:
+            if piece.id == exclude_piece_id:
+                continue
+            occupied = self._get_occupied_cells(piece)
+            if (row, col) in occupied:
+                return True
+        return False
+
     def get_piece_at(self, row: int, col: int) -> Optional[GamePiece]:
         for piece in self.pieces:
-            if piece.row == row and piece.col == col:
+            occupied = self._get_occupied_cells(piece)
+            if (row, col) in occupied:
                 return piece
         return None
 
     def get_pieces_by_faction(self, faction: PieceFaction) -> List[GamePiece]:
         return [p for p in self.pieces if p.faction == faction]
+
+    def _can_place_piece_at(self, piece: GamePiece, new_row: int, new_col: int) -> bool:
+        """Проверить, можно ли разместить модель в новой позиции (без коллизий и за границами)"""
+        half_base = piece.base_size // 2
+        
+        # Проверяем все клетки базы
+        for dr in range(-half_base, half_base + 1):
+            for dc in range(-half_base, half_base + 1):
+                check_row = new_row + dr
+                check_col = new_col + dc
+                
+                # Проверка границ поля
+                if not (0 <= check_row < self.state_rows and 0 <= check_col < self.state_cols):
+                    return False
+                
+                # Проверка коллизий с другими моделями
+                if self._is_cell_occupied_by(check_row, check_col, piece.id):
+                    return False
+        
+        return True
 
     def move_piece(self, piece_id: str, new_row: int, new_col: int) -> bool:
         piece = next((p for p in self.pieces if p.id == piece_id), None)
@@ -252,15 +296,16 @@ class GameService:
         if not (0 <= new_row < self.state_rows and 0 <= new_col < self.state_cols):
             return False
 
-        if self.get_piece_at(new_row, new_col):
-            return False
-
         # ✅ ИСПРАВЛЕНО: Движение на основе характеристики M
         # M в WH40K это дюймы, 1 дюйм ≈ 1 клетка
         max_move = piece.M  # Теперь используем M напрямую
         distance = abs(new_row - piece.row) + abs(new_col - piece.col)
 
         if distance > max_move:
+            return False
+
+        # Проверка что новая позиция не занята другими моделями (с учётом размера базы)
+        if not self._can_place_piece_at(piece, new_row, new_col):
             return False
 
         piece.row = new_row
@@ -291,7 +336,7 @@ class GameService:
 
                 if (0 <= new_row < self.state_rows and
                         0 <= new_col < self.state_cols and
-                        not self.get_piece_at(new_row, new_col)):
+                        self._can_place_piece_at(piece, new_row, new_col)):
                     moves.append({"row": new_row, "col": new_col})
 
         return moves
@@ -356,6 +401,44 @@ class GameService:
         roll = self._roll_dice(1)[0]
         return roll >= modified_save
 
+    def _calculate_distance(self, piece1: GamePiece, piece2: GamePiece) -> int:
+        """Расчёт минимального расстояния между моделями с учётом размера базы"""
+        # Для моделей с базой > 1, расстояние считается от ближайших краёв баз
+        half_base1 = piece1.base_size // 2
+        half_base2 = piece2.base_size // 2
+        
+        # Границы базы первой модели
+        min_row1 = piece1.row - half_base1
+        max_row1 = piece1.row + half_base1
+        min_col1 = piece1.col - half_base1
+        max_col1 = piece1.col + half_base1
+        
+        # Границы базы второй модели
+        min_row2 = piece2.row - half_base2
+        max_row2 = piece2.row + half_base2
+        min_col2 = piece2.col - half_base2
+        max_col2 = piece2.col + half_base2
+        
+        # Если базы перекрываются или соприкасаются - расстояние 0
+        if not (max_row1 < min_row2 or max_row2 < min_row1 or 
+                max_col1 < min_col2 or max_col2 < min_col1):
+            return 0
+        
+        # Вычисляем расстояние по вертикали и горизонтали между ближайшими краями
+        row_dist = 0
+        if max_row1 < min_row2:
+            row_dist = min_row2 - max_row1 - 1
+        elif max_row2 < min_row1:
+            row_dist = min_row1 - max_row2 - 1
+            
+        col_dist = 0
+        if max_col1 < min_col2:
+            col_dist = min_col2 - max_col1 - 1
+        elif max_col2 < min_col1:
+            col_dist = min_col1 - max_col2 - 1
+            
+        return row_dist + col_dist
+
     def get_attack_targets(self, piece_id: str, weapon_type: str = "melee", weapon_index: int = 0) -> list:
         piece = next((p for p in self.pieces if p.id == piece_id), None)
         if not piece:
@@ -375,7 +458,7 @@ class GameService:
             if not piece.MeleeWeapon or weapon_index >= len(piece.MeleeWeapon):
                 return []
             weapon = piece.MeleeWeapon[weapon_index]
-            # Ближний бой = 1 клетка
+            # Ближний бой = 1 клетка (от края до края)
             max_range = 1
 
         targets = []
@@ -386,8 +469,8 @@ class GameService:
             if other.faction == piece.faction:
                 continue
 
-            # ✅ Расчёт дистанции (Манхэттенское расстояние)
-            distance = abs(other.row - piece.row) + abs(other.col - piece.col)
+            # ✅ Расчёт дистанции с учётом размера базы
+            distance = self._calculate_distance(piece, other)
 
             # ✅ Проверка по дальности оружия
             if distance <= max_range:
@@ -433,8 +516,8 @@ class GameService:
             weapon = attacker.MeleeWeapon[weapon_index]
             max_range = 1
 
-        # ✅ Проверка дистанции
-        distance = abs(defender.row - attacker.row) + abs(defender.col - attacker.col)
+        # ✅ Проверка дистанции (с учётом размера базы)
+        distance = self._calculate_distance(attacker, defender)
         if distance > max_range:
             return {"success": False, "message": f"Цель вне диапазона (нужно {distance} '', доступно {max_range}'')"}
 

@@ -64,6 +64,7 @@ function renderBoard() {
 
     const pieceMap = {};
     gameState.pieces.forEach(piece => {
+        // Сохраняем информацию о базе для каждой модели
         pieceMap[`${piece.row},${piece.col}`] = piece;
     });
 
@@ -85,6 +86,23 @@ function renderBoard() {
             if (attackTargets.some(t => t.row === row && t.col === col)) {
                 cell.classList.add('attack-target');
             }
+
+            // Подсветка клеток, занимаемых базами моделей
+            gameState.pieces.forEach(p => {
+                const halfBase = Math.floor(p.base_size / 2);
+                const minRow = p.row - halfBase;
+                const maxRow = p.row + halfBase;
+                const minCol = p.col - halfBase;
+                const maxCol = p.col + halfBase;
+                
+                if (row >= minRow && row <= maxRow && col >= minCol && col <= maxCol) {
+                    if (p.base_size >= 3) {
+                        cell.classList.add('occupied-large');
+                    } else if (p.base_size === 2) {
+                        cell.classList.add('occupied-medium');
+                    }
+                }
+            });
 
             if (piece) {
                 const pieceEl = document.createElement('div');
