@@ -89,26 +89,25 @@ function renderBoard() {
 
             // Подсветка клеток, занимаемых базами моделей
             gameState.pieces.forEach(p => {
-                const halfBase = (p.base_size - 1) / 2;
-                const minRow = Math.floor(p.row - halfBase);
-                const maxRow = Math.ceil(p.row + halfBase + p.base_size - 1 - 2 * halfBase - 0.001);
-                const minCol = Math.floor(p.col - halfBase);
-                const maxCol = Math.ceil(p.col + halfBase + p.base_size - 1 - 2 * halfBase - 0.001);
+                const occupiedCells = getOccupiedCells(p.row, p.col, p.base_size);
                 
-                if (row >= minRow && row < maxRow && col >= minCol && col < maxCol) {
-                    if (p.base_size >= 3) {
+                if (occupiedCells.some(cell => cell[0] === row && cell[1] === col)) {
+                    if (p.base_size >= 4) {
                         cell.classList.add('occupied-large');
-                    } else if (p.base_size === 2) {
+                    } else if (p.base_size === 3) {
                         cell.classList.add('occupied-medium');
+                    } else if (p.base_size === 2) {
+                        cell.classList.add('occupied-small');
                     }
                 }
             });
 
             if (piece) {
                 const pieceEl = document.createElement('div');
-                // Добавляем класс размера базы к иконке
-                const baseSizeClass = piece.base_size >= 3 ? 'piece-large' : 
-                                     piece.base_size === 2 ? 'piece-medium' : 'piece-small';
+                // Добавляем класс размера базы к иконке - теперь иконка соответствует размеру базы
+                const baseSizeClass = piece.base_size >= 4 ? 'piece-large' : 
+                                     piece.base_size === 3 ? 'piece-medium' : 
+                                     piece.base_size === 2 ? 'piece-small' : 'piece-tiny';
                 pieceEl.className = `piece ${piece.faction} ${baseSizeClass}`;
                 pieceEl.textContent = piece.symbol;
 
@@ -370,6 +369,31 @@ function deselectPiece() {
     attackTargets = [];
     renderBoard();
     document.getElementById('piece-info').innerHTML = '<p class="hint">Кликните на персонажа для просмотра</p>';
+}
+
+// Вычисление клеток, занимаемых моделью с учётом размера базы
+function getOccupiedCells(row, col, baseSize) {
+    const cells = [];
+    
+    if (baseSize % 2 === 1) {
+        // Нечётная база (1, 3, 5) - центр в клетке
+        const half = Math.floor(baseSize / 2);
+        for (let dr = -half; dr <= half; dr++) {
+            for (let dc = -half; dc <= half; dc++) {
+                cells.push([row + dr, col + dc]);
+            }
+        }
+    } else {
+        // Чётная база (2, 4) - центр на пересечении
+        const half = baseSize / 2;
+        for (let dr = -half + 1; dr <= half; dr++) {
+            for (let dc = -half + 1; dc <= half; dc++) {
+                cells.push([row + dr, col + dc]);
+            }
+        }
+    }
+    
+    return cells;
 }
 
 function addToBattleLog(entry) {

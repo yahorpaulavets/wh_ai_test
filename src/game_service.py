@@ -241,12 +241,21 @@ class GameService:
         cells = set()
         # Для base_size=N модель занимает NxN клеток
         # Центр модели находится в (piece.row, piece.col)
-        # Для нечётных баз (1, 3, 5): центр в середине
-        # Для чётных баз (2, 4): центр смещён, но占据 N клеток
-        half_base = (piece.base_size - 1) // 2
-        for dr in range(-half_base, half_base + piece.base_size - (2 * half_base)):
-            for dc in range(-half_base, half_base + piece.base_size - (2 * half_base)):
-                cells.add((piece.row + dr, piece.col + dc))
+        # Для нечётных баз (1, 3, 5): центр в середине клетки
+        # Для чётных баз (2, 4): центр на пересечении 4 клеток
+        
+        if piece.base_size % 2 == 1:
+            # Нечётная база (1, 3, 5) - центр в клетке
+            half = piece.base_size // 2
+            for dr in range(-half, half + 1):
+                for dc in range(-half, half + 1):
+                    cells.add((piece.row + dr, piece.col + dc))
+        else:
+            # Чётная база (2, 4) - центр на пересечении, занимаем клетки вокруг
+            half = piece.base_size // 2
+            for dr in range(-half + 1, half + 1):
+                for dc in range(-half + 1, half + 1):
+                    cells.add((piece.row + dr, piece.col + dc))
         return cells
 
     def _is_cell_occupied_by(self, row: int, col: int, exclude_piece_id: str) -> bool:
@@ -271,23 +280,34 @@ class GameService:
 
     def _can_place_piece_at(self, piece: GamePiece, new_row: int, new_col: int) -> bool:
         """Проверить, можно ли разместить модель в новой позиции (без коллизий и за границами)"""
-        half_base = (piece.base_size - 1) // 2
-        
         # Проверяем все клетки базы
-        for dr in range(-half_base, half_base + piece.base_size - (2 * half_base)):
-            for dc in range(-half_base, half_base + piece.base_size - (2 * half_base)):
-                check_row = new_row + dr
-                check_col = new_col + dc
-                
-                # Проверка границ поля
-                if not (0 <= check_row < self.state_rows and 0 <= check_col < self.state_cols):
-                    return False
-                
-                # Проверка коллизий с другими моделями
-                if self._is_cell_occupied_by(check_row, check_col, piece.id):
-                    return False
+        occupied_cells = self._get_occupied_cells_for_position(piece, new_row, new_col)
+        
+        for check_row, check_col in occupied_cells:
+            # Проверка границ поля
+            if not (0 <= check_row < self.state_rows and 0 <= check_col < self.state_cols):
+                return False
+            
+            # Проверка коллизий с другими моделями
+            if self._is_cell_occupied_by(check_row, check_col, piece.id):
+                return False
         
         return True
+    
+    def _get_occupied_cells_for_position(self, piece: GamePiece, row: int, col: int) -> set:
+        """Получить клетки, которые займёт модель в указанной позиции"""
+        cells = set()
+        if piece.base_size % 2 == 1:
+            half = piece.base_size // 2
+            for dr in range(-half, half + 1):
+                for dc in range(-half, half + 1):
+                    cells.add((row + dr, col + dc))
+        else:
+            half = piece.base_size // 2
+            for dr in range(-half + 1, half + 1):
+                for dc in range(-half + 1, half + 1):
+                    cells.add((row + dr, col + dc))
+        return cells
 
     def move_piece(self, piece_id: str, new_row: int, new_col: int) -> bool:
         piece = next((p for p in self.pieces if p.id == piece_id), None)
@@ -407,41 +427,23 @@ class GameService:
 
     def _calculate_distance(self, piece1: GamePiece, piece2: GamePiece) -> int:
         """Расчёт минимального расстояния между моделями с учётом размера базы"""
-        # Для моделей с базой > 1, расстояние считается от ближайших краёв баз
-        half_base1 = (piece1.base_size - 1) // 2
-        half_base2 = (piece2.base_size - 1) // 2
+        # Получаем все клетки, занимаемые каждой моделью
+        cells1 = self._get_occupied_cells(piece1)
+        cells2 = self._get_occupied_cells(piece2)
         
-        # Границы базы первой модели
-        min_row1 = piece1.row - half_base1
-        max_row1 = piece1.row + half_base1 + (piece1.base_size - 1 - 2 * half_base1)
-        min_col1 = piece1.col - half_base1
-        max_col1 = piece1.col + half_base1 + (piece1.base_size - 1 - 2 * half_base1)
-        
-        # Границы базы второй модели
-        min_row2 = piece2.row - half_base2
-        max_row2 = piece2.row + half_base2 + (piece2.base_size - 1 - 2 * half_base2)
-        min_col2 = piece2.col - half_base2
-        max_col2 = piece2.col + half_base2 + (piece2.base_size - 1 - 2 * half_base2)
-        
-        # Если базы перекрываются или соприкасаются - расстояние 0
-        if not (max_row1 < min_row2 or max_row2 < min_row1 or 
-                max_col1 < min_col2 or max_col2 < min_col1):
+        # Если клетки пересекаются - расстояние 0
+        if cells1 & cells2:
             return 0
         
-        # Вычисляем расстояние по вертикали и горизонтали между ближайшими краями
-        row_dist = 0
-        if max_row1 < min_row2:
-            row_dist = min_row2 - max_row1 - 1
-        elif max_row2 < min_row1:
-            row_dist = min_row1 - max_row2 - 1
-            
-        col_dist = 0
-        if max_col1 < min_col2:
-            col_dist = min_col2 - max_col1 - 1
-        elif max_col2 < min_col1:
-            col_dist = min_col1 - max_col2 - 1
-            
-        return row_dist + col_dist
+        # Находим минимальное расстояние между любыми двумя клетками
+        min_dist = float('inf')
+        for r1, c1 in cells1:
+            for r2, c2 in cells2:
+                dist = abs(r1 - r2) + abs(c1 - c2) - 1
+                if dist < min_dist:
+                    min_dist = dist
+        
+        return max(0, min_dist)
 
     def get_attack_targets(self, piece_id: str, weapon_type: str = "melee", weapon_index: int = 0) -> list:
         piece = next((p for p in self.pieces if p.id == piece_id), None)

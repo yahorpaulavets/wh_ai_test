@@ -130,11 +130,18 @@ header h1 {
 
 /* Визуализация размера базы модели */
 .cell.occupied-large {
-    background: rgba(184, 134, 11, 0.15);
+    background: rgba(184, 134, 11, 0.2);
+    border: 1px solid rgba(184, 134, 11, 0.4);
 }
 
 .cell.occupied-medium {
-    background: rgba(138, 43, 226, 0.1);
+    background: rgba(138, 43, 226, 0.15);
+    border: 1px solid rgba(138, 43, 226, 0.3);
+}
+
+.cell.occupied-small {
+    background: rgba(0, 100, 200, 0.1);
+    border: 1px solid rgba(0, 100, 200, 0.2);
 }
 
 .cell:nth-child(even) {
@@ -168,17 +175,21 @@ header h1 {
     z-index: 1;
 }
 
-/* Размер иконки в зависимости от базы */
+/* Размер иконки в зависимости от базы - теперь иконки увеличены под размер баз */
+.piece.piece-tiny {
+    font-size: 14px;
+}
+
 .piece.piece-small {
-    font-size: 18px;
+    font-size: 24px;
 }
 
 .piece.piece-medium {
-    font-size: 28px;
+    font-size: 36px;
 }
 
 .piece.piece-large {
-    font-size: 40px;
+    font-size: 48px;
 }
 
 .piece.chaos {
