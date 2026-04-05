@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warhammer 40K - Battle Field</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚔️ Warhammer 40K Battle</h1>
+            <div class="turn-indicator">
+                <span id="turn-text">🟣 Ход: Хаос</span>
+                <button onclick="switchTurn()" class="btn-switch-turn" id="switch-turn-btn">➡️ Передать ход</button>
+            </div>
+            <button onclick="resetGame()" class="btn-reset">🔄 Заново</button>
+        </header>
+
+        <div class="game-area">
+            <div id="game-board" class="game-board"></div>
+            <div id="info-panel" class="info-panel wh40k-style">
+                <h2>📋 Досье</h2>
+                <div id="piece-info">
+                    <p class="hint">Кликните на персонажа для просмотра</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="battle-log" class="battle-log">
+            <h3>📜 Журнал Битвы</h3>
+            <div id="log-content"></div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
