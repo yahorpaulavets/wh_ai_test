@@ -67,6 +67,7 @@ class GamePiece(BaseModel):
     MeleeWeapon: List[MeleeWeapon] = []
     symbol: str = "♟"
     keywords: List[str] = []
+    base_size: int = 1  # Размер базы в клетках (1 = 1x1, 3 = 3x3, 5 = 5x5)
 
 
 # ✅ Модели запросов

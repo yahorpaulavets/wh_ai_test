@@ -60,8 +60,12 @@ async def get_valid_moves(piece_id: str):
 
 
 @app.get("/api/game/piece/{piece_id}/targets")
-async def get_attack_targets(piece_id: str, weapon_type: str = "melee"):
-    return {"targets": game_service.get_attack_targets(piece_id, weapon_type)}
+async def get_attack_targets(
+    piece_id: str,
+    weapon_type: str = "melee",
+    weapon_index: int = 0
+):
+    return {"targets": game_service.get_attack_targets(piece_id, weapon_type, weapon_index)}
 
 
 @app.post("/api/game/move")
@@ -91,13 +95,5 @@ async def reset_game():
     return {"success": True, "message": "Игра сброшена"}
 
 
-@app.get("/api/game/piece/{piece_id}/targets")
-async def get_attack_targets(
-    piece_id: str,
-    weapon_type: str = "melee",
-    weapon_index: int = 0
-):
-    return {"targets": game_service.get_attack_targets(piece_id, weapon_type, weapon_index)}
-
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="192.168.1.140", port=80, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

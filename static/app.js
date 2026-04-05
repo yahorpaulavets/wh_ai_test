@@ -64,6 +64,7 @@ function renderBoard() {
 
     const pieceMap = {};
     gameState.pieces.forEach(piece => {
+        // Сохраняем информацию о базе для каждой модели
         pieceMap[`${piece.row},${piece.col}`] = piece;
     });
 
@@ -86,9 +87,28 @@ function renderBoard() {
                 cell.classList.add('attack-target');
             }
 
+            // Подсветка клеток, занимаемых базами моделей
+            gameState.pieces.forEach(p => {
+                const occupiedCells = getOccupiedCells(p.row, p.col, p.base_size);
+                
+                if (occupiedCells.some(cell => cell[0] === row && cell[1] === col)) {
+                    if (p.base_size >= 4) {
+                        cell.classList.add('occupied-large');
+                    } else if (p.base_size === 3) {
+                        cell.classList.add('occupied-medium');
+                    } else if (p.base_size === 2) {
+                        cell.classList.add('occupied-small');
+                    }
+                }
+            });
+
             if (piece) {
                 const pieceEl = document.createElement('div');
-                pieceEl.className = `piece ${piece.faction}`;
+                // Добавляем класс размера базы к иконке - теперь иконка соответствует размеру базы
+                const baseSizeClass = piece.base_size >= 4 ? 'piece-large' : 
+                                     piece.base_size === 3 ? 'piece-medium' : 
+                                     piece.base_size === 2 ? 'piece-small' : 'piece-tiny';
+                pieceEl.className = `piece ${piece.faction} ${baseSizeClass}`;
                 pieceEl.textContent = piece.symbol;
 
                 if (piece.W_max > 0) {
@@ -157,6 +177,8 @@ async function selectPiece(piece) {
 }
 
 async function loadAttacksForCurrentWeapon() {
+    if (!selectedPiece) return;
+    
     const [movesRes, targetsRes] = await Promise.all([
         fetch(`/api/game/piece/${selectedPiece.id}/moves`),
         fetch(`/api/game/piece/${selectedPiece.id}/targets?weapon_type=${selectedWeaponType}&weapon_index=${selectedWeaponIndex}`)
@@ -227,10 +249,10 @@ async function attackPiece(attackerId, defenderId) {
 }
 
 // ✅ ИСПРАВЛЕНО: Выбор оружия из досье
-async function selectWeapon(weaponType, weaponIndex) {
+function selectWeapon(weaponType, weaponIndex) {
     selectedWeaponType = weaponType;
     selectedWeaponIndex = weaponIndex;
-    await loadAttacksForCurrentWeapon();
+    loadAttacksForCurrentWeapon();
     renderBoard();
     showPieceInfo(selectedPiece);
 }
@@ -347,6 +369,31 @@ function deselectPiece() {
     attackTargets = [];
     renderBoard();
     document.getElementById('piece-info').innerHTML = '<p class="hint">Кликните на персонажа для просмотра</p>';
+}
+
+// Вычисление клеток, занимаемых моделью с учётом размера базы
+function getOccupiedCells(row, col, baseSize) {
+    const cells = [];
+    
+    if (baseSize % 2 === 1) {
+        // Нечётная база (1, 3, 5) - центр в клетке
+        const half = Math.floor(baseSize / 2);
+        for (let dr = -half; dr <= half; dr++) {
+            for (let dc = -half; dc <= half; dc++) {
+                cells.push([row + dr, col + dc]);
+            }
+        }
+    } else {
+        // Чётная база (2, 4) - центр на пересечении
+        const half = baseSize / 2;
+        for (let dr = -half + 1; dr <= half; dr++) {
+            for (let dc = -half + 1; dc <= half; dc++) {
+                cells.push([row + dr, col + dc]);
+            }
+        }
+    }
+    
+    return cells;
 }
 
 function addToBattleLog(entry) {
